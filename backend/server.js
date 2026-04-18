@@ -12,6 +12,8 @@ const issueRoutes = require("./routes/issue.routes");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const returnsRoutes = require("./routes/returns.routes");
 const vendorRiskRoutes = require("./routes/vendorRisk.routes");
+const aiRoutes = require("./routes/ai.routes");
+
 
 const errorHandler = require("./middleware/errorHandler");
 
@@ -51,6 +53,7 @@ app.use("/api/issues", issueRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/returns", returnsRoutes);
 app.use("/api/vendor-risk", vendorRiskRoutes);
+app.use("/api/ai", aiRoutes); 
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -75,3 +78,5 @@ mongoose
     console.error("❌ MongoDB connection error:", err.message);
     process.exit(1);
   });
+
+  
