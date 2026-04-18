@@ -11,6 +11,7 @@ import PartyDetailPage from './pages/PartyDetailPage.jsx';
 import IssuesPage from './pages/IssuesPage.jsx';
 import ReturnPreparationPage from './pages/ReturnPreparationPage.jsx';
 import ExportCenterPage from './pages/ExportCenterPage.jsx';
+import Chatbot from './components/Chatbot.jsx';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -27,7 +28,9 @@ function PublicRoute({ children }) {
 }
 
 export default function App() {
+  const { user } = useAuth();
   return (
+    <>
     <Routes>
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
@@ -44,5 +47,7 @@ export default function App() {
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
+    {user && <Chatbot />}  
+    </>
   );
 }
