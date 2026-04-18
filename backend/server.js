@@ -11,6 +11,7 @@ const partyRoutes = require("./routes/party.routes");
 const issueRoutes = require("./routes/issue.routes");
 const dashboardRoutes = require("./routes/dashboard.routes");
 const returnsRoutes = require("./routes/returns.routes");
+const vendorRiskRoutes = require("./routes/vendorRisk.routes");
 
 const errorHandler = require("./middleware/errorHandler");
 
@@ -24,6 +25,23 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 // Static uploads folder
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// Request logger middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  const originalEnd = res.end;
+  res.end = function (...args) {
+    const duration = Date.now() - start;
+    const color = res.statusCode < 400 ? "\x1b[32m" : res.statusCode < 500 ? "\x1b[33m" : "\x1b[31m";
+    console.log(
+      `\x1b[2m[${new Date().toLocaleTimeString("en-IN", { hour12: false })}]\x1b[0m ` +
+      `${color}${req.method}\x1b[0m ${req.originalUrl} ` +
+      `${color}${res.statusCode}\x1b[0m \x1b[2m${duration}ms\x1b[0m`
+    );
+    originalEnd.apply(res, args);
+  };
+  next();
+});
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/upload", uploadRoutes);
@@ -32,6 +50,7 @@ app.use("/api/party", partyRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/returns", returnsRoutes);
+app.use("/api/vendor-risk", vendorRiskRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {

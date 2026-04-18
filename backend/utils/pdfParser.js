@@ -4,7 +4,7 @@
  * Supports common Indian invoice formats
  */
 
-const pdfParse = require("pdf-parse");
+const { PDFParse } = require("pdf-parse");
 const fs = require("fs");
 const { normalizeGSTIN, normalizeAmount, normalizeDate } = require("./normalizer");
 
@@ -85,9 +85,28 @@ function extractInvoiceData(text, fileName) {
     data.invoiceNo = invNoMatch[1].trim();
     data.extractedFields.push("invoiceNo");
   } else {
-    // Use filename as fallback
-    const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "").replace(/[^A-Za-z0-9\-_]/g, "-");
-    data.invoiceNo = nameWithoutExt;
+    // Fallback: look for common invoice number patterns in text
+    const fallbackPatterns = [
+      /\b(INV[-\/]?\d{3,})\b/i,
+      /\b(BILL[-\/]?\d{3,})\b/i,
+      /\b(GST[-\/]?INV[-\/]?\d{3,})\b/i,
+      /\b([A-Z]{2,5}[-\/]\d{4}[-\/]\d{3,})\b/,
+    ];
+    let found = false;
+    for (const pat of fallbackPatterns) {
+      const m = text.match(pat);
+      if (m) {
+        data.invoiceNo = m[1].trim();
+        data.extractedFields.push("invoiceNo");
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      // Use filename as last resort
+      const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "").replace(/[^A-Za-z0-9\-_]/g, "-");
+      data.invoiceNo = nameWithoutExt;
+    }
   }
 
   // Extract Invoice Date
@@ -206,9 +225,22 @@ function extractInvoiceData(text, fileName) {
  */
 async function parsePDFInvoice(filePath, fileName) {
   const dataBuffer = fs.readFileSync(filePath);
-  const pdfData = await pdfParse(dataBuffer);
+  const uint8Array = new Uint8Array(dataBuffer);
+  const parser = new PDFParse(uint8Array);
+  await parser.load();
 
-  const text = pdfData.text || "";
+  // getText() returns { pages: [{ text: '...' }, ...] }
+  const result = await parser.getText();
+  const pages = result?.pages || [];
+  const numPages = pages.length || 1;
+
+  // Combine text from all pages
+  let fullText = "";
+  for (const page of pages) {
+    if (page?.text) fullText += page.text + "\n";
+  }
+
+  const text = fullText;
 
   if (!text.trim()) {
     return {
@@ -223,7 +255,7 @@ async function parsePDFInvoice(filePath, fileName) {
   return {
     success: true,
     data: invoiceData,
-    pageCount: pdfData.numpages,
+    pageCount: numPages,
     textLength: text.length,
   };
 }

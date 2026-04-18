@@ -3,6 +3,7 @@ const path = require("path");
 const Upload = require("../models/Upload");
 const Invoice = require("../models/Invoice");
 const { parseMultiplePDFs } = require("../utils/pdfParser");
+const logger = require("../utils/logger");
 const {
   normalizeGSTIN,
   normalizeInvoiceNo,
@@ -55,6 +56,7 @@ exports.uploadPDFInvoices = async (req, res, next) => {
     }
 
     // Parse all PDFs
+    logger.pdfUpload(req.files.length, invoiceType);
     const parseResults = await parseMultiplePDFs(req.files);
 
     const successfulInvoices = [];
@@ -139,6 +141,8 @@ exports.uploadPDFInvoices = async (req, res, next) => {
         confidence: data.extractionConfidence,
         extractedFields: data.extractedFields,
       });
+
+      logger.pdfExtracted(result.fileName, data.invoiceNo || "unknown", data.extractionConfidence);
     }
 
     res.status(201).json({

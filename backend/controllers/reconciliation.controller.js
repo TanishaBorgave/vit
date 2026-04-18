@@ -1,6 +1,7 @@
 const Invoice = require("../models/Invoice");
 const ReconciliationResult = require("../models/ReconciliationResult");
 const Issue = require("../models/Issue");
+const logger = require("../utils/logger");
 
 /**
  * Run reconciliation engine
@@ -287,6 +288,8 @@ exports.runReconciliation = async (req, res, next) => {
       totalItcAtRisk: results.reduce((sum, r) => sum + r.itcAtRisk, 0),
       issuesCreated: validIssues.length,
     };
+
+    logger.reconciliation(summary.matched, summary.mismatched, summary.missingIn2B, summary.missingInBooks);
 
     res.json({
       message: "Reconciliation completed successfully",

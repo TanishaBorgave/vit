@@ -3,6 +3,7 @@ const path = require("path");
 const XLSX = require("xlsx");
 const Upload = require("../models/Upload");
 const Invoice = require("../models/Invoice");
+const logger = require("../utils/logger");
 const {
   normalizeGSTIN,
   normalizeInvoiceNo,
@@ -49,6 +50,8 @@ exports.uploadFile = async (req, res, next) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
+
+    logger.upload(req.file.originalname, req.body.fileType, req.file.size);
 
     const { fileType } = req.body;
     if (!fileType || !["books", "gstr2b", "gstr1", "sales", "purchase"].includes(fileType)) {
@@ -158,6 +161,8 @@ exports.uploadFile = async (req, res, next) => {
       upload.processedAt = new Date();
       await upload.save();
 
+      logger.uploadProcessed(req.file.originalname, invoices.length, fileType);
+
       res.status(201).json({
         message: "File uploaded and processed successfully",
         upload: {
@@ -173,6 +178,7 @@ exports.uploadFile = async (req, res, next) => {
       upload.status = "error";
       upload.errorMessage = parseError.message;
       await upload.save();
+      logger.uploadError(req.file.originalname, parseError.message);
       throw parseError;
     }
   } catch (error) {
@@ -205,6 +211,7 @@ exports.deleteUpload = async (req, res, next) => {
     await Invoice.deleteMany({ upload: upload._id });
     await Upload.deleteOne({ _id: upload._id });
 
+    logger.uploadDeleted(upload.originalName);
     res.json({ message: "Upload and associated data deleted" });
   } catch (error) {
     next(error);

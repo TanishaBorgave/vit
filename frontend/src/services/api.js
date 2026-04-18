@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -92,6 +92,14 @@ export const returnsAPI = {
   downloadExport: (id) =>
     api.get(`/returns/export/${id}`, { responseType: 'blob' }),
   deleteExport: (id) => api.delete(`/returns/export/${id}`),
+};
+
+// Vendor Risk (Phase 3 — ML)
+export const vendorRiskAPI = {
+  runAnalysis: () => api.post('/vendor-risk/analyze'),
+  getAll: (params) => api.get('/vendor-risk', { params }),
+  getDashboardStats: () => api.get('/vendor-risk/dashboard/stats'),
+  getVendorDetail: (gstin) => api.get(`/vendor-risk/${gstin}`),
 };
 
 export default api;

@@ -14,6 +14,7 @@ import {
   Zap,
   FileSpreadsheet,
   Download,
+  Brain,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -25,6 +26,7 @@ const navItems = [
   { path: '/issues', label: 'Issues', icon: AlertTriangle },
   { path: '/returns', label: 'Return Preparation', icon: FileSpreadsheet },
   { path: '/exports', label: 'Export Center', icon: Download },
+  { path: '/vendor-risk', label: 'Vendor Risk AI', icon: Brain },
 ];
 
 export default function Layout() {

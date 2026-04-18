@@ -11,6 +11,7 @@ import PartyDetailPage from './pages/PartyDetailPage.jsx';
 import IssuesPage from './pages/IssuesPage.jsx';
 import ReturnPreparationPage from './pages/ReturnPreparationPage.jsx';
 import ExportCenterPage from './pages/ExportCenterPage.jsx';
+import VendorRiskPage from './pages/VendorRiskPage.jsx';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="issues" element={<IssuesPage />} />
         <Route path="returns" element={<ReturnPreparationPage />} />
         <Route path="exports" element={<ExportCenterPage />} />
+        <Route path="vendor-risk" element={<VendorRiskPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

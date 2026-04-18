@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const { z } = require("zod");
 const User = require("../models/User");
+const logger = require("../utils/logger");
 
 const signupSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -33,6 +34,8 @@ exports.signup = async (req, res, next) => {
     const user = await User.create(data);
     const token = generateToken(user._id);
 
+    logger.auth("SIGNUP", data.email);
+
     res.status(201).json({
       message: "Account created successfully",
       token,
@@ -64,6 +67,8 @@ exports.login = async (req, res, next) => {
     }
 
     const token = generateToken(user._id);
+
+    logger.auth("LOGIN", data.email);
 
     res.json({
       message: "Login successful",
