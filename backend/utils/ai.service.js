@@ -2,15 +2,6 @@ const fetch = require("node-fetch");
 
 const chatWithGemini = async (query, userData) => {
   const prompt = `
-You are a GST assistant helping small businesses.
-
-User Data:
-- Total Invoices: ${userData.total}
-- Mismatches: ${userData.mismatch}
-- ITC Risk: ₹${userData.itcRisk}
-- Top Vendor: ${userData.topVendor}
-
-Question:
 ${query}
 `;
 
@@ -28,7 +19,7 @@ ${query}
           },
         ],
       }),
-    }
+    },
   );
 
   const data = await response.json();
