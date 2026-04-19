@@ -11,6 +11,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
+  RefreshCw,
+  Sparkles,
 } from 'lucide-react';
 import { partyAPI, issueAPI } from '../services/api';
 import Badge from '../components/Badge.jsx';
@@ -23,12 +25,20 @@ function formatCurrency(val) {
   return '₹' + Number(val).toLocaleString('en-IN', { maximumFractionDigits: 2 });
 }
 
+const TONE_OPTIONS = [
+  { value: 'formal', label: 'Formal' },
+  { value: 'friendly', label: 'Friendly' },
+  { value: 'concise', label: 'Concise' },
+];
+
 export default function PartyDetailPage() {
   const { gstin } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [emailGenerating, setEmailGenerating] = useState(false);
+  const [selectedTone, setSelectedTone] = useState('formal');
 
   useEffect(() => {
     fetchPartyDetail();
@@ -51,6 +61,19 @@ export default function PartyDetailPage() {
       setCopied(true);
       toast.success('Email template copied to clipboard');
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const regenerateEmail = async () => {
+    setEmailGenerating(true);
+    try {
+      const { data: resp } = await partyAPI.regenerateEmail(gstin, selectedTone);
+      setData((prev) => ({ ...prev, emailTemplate: resp.emailTemplate }));
+      toast.success('Email regenerated with AI');
+    } catch {
+      toast.error('Failed to regenerate email');
+    } finally {
+      setEmailGenerating(false);
     }
   };
 
@@ -113,31 +136,55 @@ export default function PartyDetailPage() {
         <StatCard title="ITC at Risk" value={formatCurrency(summary.totalItcAtRisk)} icon={IndianRupee} color="danger" delay={3} />
       </div>
 
-      {/* Email template */}
-      {emailTemplate && (summary.missingIn2B > 0 || summary.mismatched > 0) && (
+      {/* AI-Generated Email template */}
+      {(emailTemplate || emailGenerating) && (summary.missingIn2B > 0 || summary.mismatched > 0) && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           className="bg-white rounded-2xl border border-surface-200 overflow-hidden"
         >
-          <div className="px-6 py-4 border-b border-surface-100 flex items-center justify-between">
+          <div className="px-6 py-4 border-b border-surface-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Mail className="w-4 h-4 text-primary-500" />
-              <h3 className="text-sm font-semibold text-surface-700">Follow-up Email Template</h3>
+              <h3 className="text-sm font-semibold text-surface-700">AI-Powered Follow-up Email</h3>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700 border border-purple-200/50">
+                <Sparkles className="w-3 h-3" />
+                Gemini AI
+              </span>
             </div>
-            <button
-              onClick={copyEmail}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-primary-50 text-primary-600 hover:bg-primary-100 transition-colors"
-            >
-              {copied ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              {copied ? 'Copied!' : 'Copy Email'}
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Copy button */}
+              <button
+                onClick={copyEmail}
+                disabled={emailGenerating || !emailTemplate}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-primary-50 text-primary-600 hover:bg-primary-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {copied ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? 'Copied!' : 'Copy Email'}
+              </button>
+            </div>
           </div>
           <div className="p-6">
-            <pre className="text-xs text-surface-600 whitespace-pre-wrap font-mono leading-relaxed bg-surface-50 p-4 rounded-xl max-h-64 overflow-y-auto">
-              {emailTemplate}
-            </pre>
+            {emailGenerating ? (
+              <div className="space-y-3 animate-pulse">
+                <div className="h-4 bg-surface-100 rounded w-3/4" />
+                <div className="h-4 bg-surface-100 rounded w-full" />
+                <div className="h-4 bg-surface-100 rounded w-5/6" />
+                <div className="h-4 bg-surface-100 rounded w-2/3" />
+                <div className="h-4 bg-surface-100 rounded w-full" />
+                <div className="h-4 bg-surface-100 rounded w-4/5" />
+                <div className="h-4 bg-surface-100 rounded w-1/2" />
+                <p className="text-xs text-surface-400 text-center pt-2 flex items-center justify-center gap-1.5">
+                  <Sparkles className="w-3 h-3 text-purple-400" />
+                  Gemini AI is crafting a personalized email...
+                </p>
+              </div>
+            ) : (
+              <pre className="text-xs text-surface-600 whitespace-pre-wrap font-mono leading-relaxed bg-surface-50 p-4 rounded-xl max-h-64 overflow-y-auto">
+                {emailTemplate}
+              </pre>
+            )}
           </div>
         </motion.div>
       )}
@@ -228,3 +275,4 @@ export default function PartyDetailPage() {
     </div>
   );
 }
+

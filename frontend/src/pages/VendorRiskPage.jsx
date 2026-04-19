@@ -286,24 +286,30 @@ export default function VendorRiskPage() {
                 {dashboard.scoreDistribution && (
                   <div className="bg-white rounded-2xl border border-surface-200 p-6">
                     <h3 className="font-semibold text-surface-800 mb-5">Score Distribution</h3>
-                    <div className="flex items-end gap-2 h-32">
-                      {dashboard.scoreDistribution.map((bucket, idx) => {
+                    <div className="flex items-end gap-3" style={{ height: 160 }}>
+                      {(() => {
                         const maxCount = Math.max(...dashboard.scoreDistribution.map((b) => b.count), 1);
-                        const height = (bucket.count / maxCount) * 100;
-                        const colors = ['bg-red-400', 'bg-danger-400', 'bg-warning-400', 'bg-primary-400', 'bg-success-400'];
-                        return (
-                          <div key={idx} className="flex-1 flex flex-col items-center gap-1">
-                            <span className="text-xs font-bold text-surface-700">{bucket.count}</span>
-                            <motion.div
-                              className={`w-full rounded-t-lg ${colors[idx]}`}
-                              initial={{ height: 0 }}
-                              animate={{ height: `${Math.max(height, 4)}%` }}
-                              transition={{ duration: 0.8, delay: idx * 0.1 }}
-                            />
-                            <span className="text-xs text-surface-400 mt-1">{bucket.range}</span>
-                          </div>
-                        );
-                      })}
+                        const maxBarHeight = 110; // px
+                        const colors = ['bg-red-400', 'bg-orange-400', 'bg-amber-400', 'bg-indigo-400', 'bg-emerald-400'];
+                        return dashboard.scoreDistribution.map((bucket, idx) => {
+                          const barHeight = bucket.count > 0
+                            ? Math.max((bucket.count / maxCount) * maxBarHeight, 8)
+                            : 4;
+                          return (
+                            <div key={idx} className="flex-1 flex flex-col items-center justify-end" style={{ height: '100%' }}>
+                              <span className="text-xs font-bold text-surface-700 mb-1">{bucket.count}</span>
+                              <motion.div
+                                className={`w-full rounded-lg ${colors[idx]}`}
+                                initial={{ height: 0 }}
+                                animate={{ height: barHeight }}
+                                transition={{ duration: 0.8, delay: idx * 0.1, ease: 'easeOut' }}
+                                style={{ minWidth: 24 }}
+                              />
+                              <span className="text-[11px] text-surface-500 mt-2 font-medium">{bucket.range}</span>
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                   </div>
                 )}

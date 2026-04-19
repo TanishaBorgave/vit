@@ -823,6 +823,11 @@ export default function ReturnPreparationPage() {
             <div className="flex items-center gap-3">
               <AlertTriangle className="w-5 h-5 text-warning-500" />
               <span className="font-semibold text-surface-800">Validation Issues ({totalErrors} errors, {totalWarnings} warnings)</span>
+              {[...salesErrors, ...purchaseErrors].some((e) => e.field === 'negativeList') && (
+                <span className="text-xs px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 font-semibold flex items-center gap-1">
+                  <Shield className="w-3 h-3" /> Blocked ITC Found
+                </span>
+              )}
             </div>
             <ChevronDown className={`w-5 h-5 text-surface-400 transition-transform ${showErrors ? 'rotate-180' : ''}`} />
           </button>
@@ -832,18 +837,28 @@ export default function ReturnPreparationPage() {
                 <div className="px-6 pb-4 max-h-96 overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead><tr className="border-b border-surface-100">
-                      <th className="text-left py-2 px-3 text-xs font-semibold text-surface-400 uppercase">Severity</th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-surface-400 uppercase">Type</th>
                       <th className="text-left py-2 px-3 text-xs font-semibold text-surface-400 uppercase">Invoice</th>
                       <th className="text-left py-2 px-3 text-xs font-semibold text-surface-400 uppercase">Message</th>
                     </tr></thead>
                     <tbody className="divide-y divide-surface-50">
-                      {[...salesErrors, ...purchaseErrors].map((err, idx) => (
-                        <tr key={idx}>
-                          <td className="py-2 px-3">{err.severity === 'ERROR' ? <XCircle className="w-4 h-4 text-danger-500" /> : <AlertTriangle className="w-4 h-4 text-warning-500" />}</td>
-                          <td className="py-2 px-3 font-mono text-xs">{err.invoiceNo}</td>
-                          <td className="py-2 px-3 text-xs text-surface-600">{err.message}</td>
-                        </tr>
-                      ))}
+                      {[...salesErrors, ...purchaseErrors].map((err, idx) => {
+                        const isNegativeList = err.field === 'negativeList';
+                        return (
+                          <tr key={idx} className={isNegativeList ? 'bg-purple-50/50' : ''}>
+                            <td className="py-2 px-3">
+                              {isNegativeList
+                                ? <span className="flex items-center gap-1 text-purple-600"><Shield className="w-4 h-4" /><span className="text-[10px] font-semibold uppercase">Blocked ITC</span></span>
+                                : err.severity === 'ERROR'
+                                  ? <XCircle className="w-4 h-4 text-danger-500" />
+                                  : <AlertTriangle className="w-4 h-4 text-warning-500" />
+                              }
+                            </td>
+                            <td className="py-2 px-3 font-mono text-xs">{err.invoiceNo}</td>
+                            <td className={`py-2 px-3 text-xs ${isNegativeList ? 'text-purple-700' : 'text-surface-600'}`}>{err.message}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

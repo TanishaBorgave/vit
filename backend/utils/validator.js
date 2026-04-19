@@ -1,9 +1,244 @@
 /**
  * GST Data Validation Engine
  * Validates invoice data before export to ensure GST compliance
+ * Includes Section 17(5) CGST Act — Blocked ITC (Negative List) validation
  */
 
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * GST NEGATIVE LIST — Section 17(5) CGST Act, 2017
+ * Items/services where Input Tax Credit (ITC) is BLOCKED
+ * ═══════════════════════════════════════════════════════════════
+ */
+const GST_NEGATIVE_LIST = [
+  {
+    id: "MOTOR_VEHICLES",
+    category: "Motor Vehicles & Conveyances",
+    section: "Section 17(5)(a)",
+    description: "Motor vehicles for transportation of persons (seating ≤13), vessels, and aircraft. ITC blocked unless used for further supply, passenger transport, or driving training.",
+    hsnCodes: ["8702", "8703", "8704", "8711", "8901", "8802", "8803"],
+    keywords: [
+      "motor vehicle", "car purchase", "car lease", "automobile", "sedan", "suv",
+      "hatchback", "vehicle purchase", "two wheeler", "motorcycle", "scooter",
+      "boat", "yacht", "vessel", "aircraft", "helicopter", "airplane",
+      "car rental", "vehicle rental", "car hire"
+    ],
+  },
+  {
+    id: "MOTOR_VEHICLE_SERVICES",
+    category: "Motor Vehicle Related Services",
+    section: "Section 17(5)(ab)",
+    description: "General insurance, servicing, repair and maintenance of motor vehicles where ITC on vehicle itself is blocked.",
+    sacCodes: ["9971", "9987"],
+    keywords: [
+      "vehicle insurance", "car insurance", "motor insurance", "vehicle servicing",
+      "car servicing", "car repair", "vehicle repair", "car maintenance",
+      "vehicle maintenance", "auto repair", "auto service", "garage service",
+      "car wash", "denting", "painting vehicle", "tyre replacement"
+    ],
+  },
+  {
+    id: "FOOD_BEVERAGES",
+    category: "Food, Beverages & Outdoor Catering",
+    section: "Section 17(5)(b)(i)",
+    description: "Food and beverages, outdoor catering. ITC blocked unless used for same category outward supply or obligatory under law.",
+    hsnCodes: ["0901", "0902", "2101", "2106", "2201", "2202"],
+    sacCodes: ["9963"],
+    keywords: [
+      "food", "beverage", "catering", "restaurant", "hotel food", "meals",
+      "lunch", "dinner", "breakfast", "snacks", "tea coffee", "refreshment",
+      "outdoor catering", "party food", "canteen", "mess charges", "tiffin",
+      "sweets", "bakery", "confectionery", "pantry supplies"
+    ],
+  },
+  {
+    id: "HEALTH_BEAUTY",
+    category: "Beauty Treatment, Health Services & Cosmetic Surgery",
+    section: "Section 17(5)(b)(ii)",
+    description: "Beauty treatment, health services, cosmetic and plastic surgery. ITC blocked unless used for same category outward supply.",
+    sacCodes: ["9993", "9992"],
+    keywords: [
+      "beauty treatment", "beauty salon", "beauty parlour", "beauty parlor",
+      "spa", "massage", "facial", "cosmetic surgery", "plastic surgery",
+      "botox", "hair treatment", "skin treatment", "dermatology",
+      "cosmetic", "grooming", "personal care service", "manicure", "pedicure"
+    ],
+  },
+  {
+    id: "CLUB_MEMBERSHIP",
+    category: "Club, Health & Fitness Centre Membership",
+    section: "Section 17(5)(b)(iii)",
+    description: "Membership of a club, health and fitness centre. ITC blocked entirely.",
+    sacCodes: ["9996"],
+    keywords: [
+      "club membership", "gym membership", "fitness centre", "fitness center",
+      "health club", "sports club", "swimming pool membership", "yoga centre",
+      "country club", "golf club", "recreation club", "gymnasium"
+    ],
+  },
+  {
+    id: "TRAVEL_BENEFITS",
+    category: "Travel Benefits to Employees",
+    section: "Section 17(5)(b)(iv)",
+    description: "Travel benefits extended to employees on vacation such as Leave Travel Concession (LTC) or Home Travel Concession.",
+    sacCodes: ["9964", "9966"],
+    keywords: [
+      "leave travel", "ltc", "home travel concession", "htc",
+      "vacation travel", "employee travel benefit", "employee leave travel",
+      "holiday travel", "employee vacation"
+    ],
+  },
+  {
+    id: "WORKS_CONTRACT_CONSTRUCTION",
+    category: "Works Contract & Construction of Immovable Property",
+    section: "Section 17(5)(c)(d)",
+    description: "Works contract services for construction of immovable property (other than plant & machinery). Also goods/services for construction on own account.",
+    sacCodes: ["9954", "9987"],
+    hsnCodes: ["6801", "6802", "6807", "6808", "6810", "6811", "6901", "6902", "6904", "6905", "6907", "6908", "7003", "7004", "7005", "7006", "7007", "7008", "7213", "7214", "7215", "7216", "7228"],
+    keywords: [
+      "works contract", "construction", "building construction",
+      "civil work", "civil construction", "immovable property",
+      "building material", "cement", "brick", "sand", "steel rods",
+      "rebar", "concrete", "plumbing work", "electrical wiring",
+      "flooring", "painting contractor", "interior decoration",
+      "renovation", "false ceiling", "waterproofing"
+    ],
+  },
+  {
+    id: "GIFTS_FREE_SAMPLES",
+    category: "Goods Disposed as Gifts or Free Samples",
+    section: "Section 17(5)(h)",
+    description: "Goods lost, stolen, destroyed, written off, or disposed of by way of gift or free samples. ITC must be reversed.",
+    keywords: [
+      "gift", "free sample", "complimentary", "giveaway", "promotional gift",
+      "corporate gift", "diwali gift", "festival gift", "gift hamper",
+      "gift voucher", "gift card", "donation goods", "free distribution"
+    ],
+  },
+  {
+    id: "PERSONAL_CONSUMPTION",
+    category: "Goods/Services for Personal Consumption",
+    section: "Section 17(5)(g)",
+    description: "Goods or services or both used for personal consumption. ITC not available.",
+    keywords: [
+      "personal use", "personal consumption", "household", "domestic use",
+      "home appliance personal", "personal grooming", "personal shopping"
+    ],
+  },
+  {
+    id: "RENT_A_CAB",
+    category: "Rent-a-Cab, Life Insurance, Health Insurance",
+    section: "Section 17(5)(b)(i)(iii)",
+    description: "Rent-a-cab services, life insurance, health insurance (unless obligatory under law for employees).",
+    sacCodes: ["9966", "9971"],
+    keywords: [
+      "rent a cab", "cab rental", "taxi hire", "cab booking", "ola uber",
+      "life insurance premium", "health insurance premium",
+      "mediclaim", "group insurance", "keyman insurance"
+    ],
+  },
+];
+
+/**
+ * Extract HSN/SAC code from invoice rawData
+ */
+function extractHSNFromInvoice(invoice) {
+  const codes = [];
+  if (invoice.rawData?.hsnCode) {
+    codes.push(String(invoice.rawData.hsnCode));
+  }
+  // Check if rawText contains HSN/SAC patterns
+  if (invoice.rawData?.rawText) {
+    const hsnPattern = /(?:HSN|SAC|HSN\/SAC)[\s:.\-]*(\d{4,8})/gi;
+    let match;
+    while ((match = hsnPattern.exec(invoice.rawData.rawText)) !== null) {
+      codes.push(match[1]);
+    }
+  }
+  return codes;
+}
+
+/**
+ * Check if an invoice falls under the GST negative list (blocked ITC)
+ * Returns array of matched negative list categories
+ */
+function validateNegativeList(invoice) {
+  const warnings = [];
+
+  // Build searchable text from invoice fields
+  const searchParts = [
+    invoice.partyName || "",
+    invoice.rawData?.rawText || "",
+    invoice.rawData?.description || "",
+    invoice.rawData?.itemDescription || "",
+    invoice.rawData?.productName || "",
+  ];
+  const searchText = searchParts.join(" ").toLowerCase();
+
+  // Extract HSN/SAC codes from invoice
+  const invoiceHSNCodes = extractHSNFromInvoice(invoice);
+
+  for (const negItem of GST_NEGATIVE_LIST) {
+    let matched = false;
+    let matchReason = "";
+
+    // Check HSN codes
+    if (negItem.hsnCodes && invoiceHSNCodes.length > 0) {
+      for (const invCode of invoiceHSNCodes) {
+        for (const negCode of negItem.hsnCodes) {
+          if (invCode.startsWith(negCode)) {
+            matched = true;
+            matchReason = `HSN code ${invCode} matches blocked category (${negCode}xx)`;
+            break;
+          }
+        }
+        if (matched) break;
+      }
+    }
+
+    // Check SAC codes
+    if (!matched && negItem.sacCodes && invoiceHSNCodes.length > 0) {
+      for (const invCode of invoiceHSNCodes) {
+        for (const negCode of negItem.sacCodes) {
+          if (invCode.startsWith(negCode)) {
+            matched = true;
+            matchReason = `SAC code ${invCode} matches blocked category (${negCode}xx)`;
+            break;
+          }
+        }
+        if (matched) break;
+      }
+    }
+
+    // Check keywords in invoice text
+    if (!matched && searchText.length > 0) {
+      for (const kw of negItem.keywords) {
+        if (searchText.includes(kw.toLowerCase())) {
+          matched = true;
+          matchReason = `Invoice text contains "${kw}" — possible blocked ITC category`;
+          break;
+        }
+      }
+    }
+
+    if (matched) {
+      warnings.push({
+        invoiceId: invoice._id,
+        invoiceNo: invoice.invoiceNo,
+        gstin: invoice.gstin,
+        field: "negativeList",
+        message: `⚠ Negative List [${negItem.section}]: ${negItem.category}. ${matchReason}. ${negItem.description}`,
+        severity: "WARNING",
+        negativeListId: negItem.id,
+        negativeListCategory: negItem.category,
+      });
+    }
+  }
+
+  return warnings;
+}
 
 /**
  * Validate GSTIN format
@@ -233,6 +468,10 @@ function validateInvoices(invoices, periodMonth, periodYear) {
         ...err,
       });
     }
+
+    // Validate against GST Negative List (Section 17(5) blocked ITC)
+    const negativeListWarnings = validateNegativeList(inv);
+    errors.push(...negativeListWarnings);
   }
 
   const totalErrors = errors.filter((e) => e.severity === "ERROR").length;
@@ -246,6 +485,8 @@ module.exports = {
   validateInvoiceNo,
   validateInvoiceDate,
   validateTaxCalculation,
+  validateNegativeList,
   findDuplicates,
   validateInvoices,
+  GST_NEGATIVE_LIST,
 };

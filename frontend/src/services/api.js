@@ -60,6 +60,7 @@ export const dashboardAPI = {
 export const partyAPI = {
   getAll: () => api.get('/party'),
   getDetail: (gstin) => api.get(`/party/${gstin}`),
+  regenerateEmail: (gstin, tone) => api.post(`/party/${gstin}/regenerate-email`, { tone }),
 };
 
 // Issues
