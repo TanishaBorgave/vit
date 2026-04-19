@@ -20,7 +20,14 @@ const errorHandler = require("./middleware/errorHandler");
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors(
+  {origin: [
+  "http://localhost:5173", // local dev (Vite)
+  "https://vit-1-t192n.onrender.com" // deployed frontend
+],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  credentials: true}
+));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
